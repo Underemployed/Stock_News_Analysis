@@ -1,13 +1,14 @@
-import re
-import csv
 import time
-
+import re
 import pandas as pd
 from selenium import webdriver
 from bs4 import BeautifulSoup
-ticker=input("Enter Ticker\n>")
+from nltk.sentiment import SentimentIntensityAnalyzer
+
+ticker = input("Enter Ticker\n>")
+
 driver = webdriver.Chrome()
-driver.get('https://in.investing.com/search/?q='+ticker+'&tab=news')
+driver.get('https://in.investing.com/search/?q=' + ticker + '&tab=news')
 
 time.sleep(3)
 prev = driver.execute_script('return document.body.scrollHeight;')
@@ -38,12 +39,20 @@ for match in matches:
     provider = match[2]
     time_element = match[3]
 
-    data.append([time_element, url, heading,ticker])
+    data.append([time_element, url, heading, ticker])
 
+df = pd.DataFrame(data, columns=['Time', 'URL', 'Heading', 'Ticker'])
 
+# Convert the date format to a recognizable format
+df['Time'] = pd.to_datetime(df['Time'], format='%B %d, %Y')
 
-df = pd.DataFrame(data, columns=['Time', 'URL', 'Heading','Ticker'])
+# Initialize the VADER sentiment analyzer
+sia = SentimentIntensityAnalyzer()
 
-filename = "data.csv"
-df.to_csv(filename, index=False)
+# Perform sentiment analysis on the headings and update the Compound column
+df['Compound'] = df['Heading'].apply(lambda x: sia.polarity_scores(x)['compound'])
+
+filename = "data_with_sentiment.xlsx"
+df.to_excel(filename, index=False)
+
 print("Data has been written to", filename)
